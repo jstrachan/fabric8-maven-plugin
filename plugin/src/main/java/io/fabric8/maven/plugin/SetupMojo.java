@@ -109,8 +109,13 @@ public class SetupMojo extends AbstractFabric8Mojo {
         String currentVersion = project.getProperties().getProperty(FABRIC8_MAVEN_PLUGIN_VERSION_PROPERTY);
         String versionExpression = "${" + FABRIC8_MAVEN_PLUGIN_VERSION_PROPERTY + "}";
         Element fmpPlugin = findPlugin(doc, PLUGIN_GROUPID, PLUGIN_ARTIFACTID);
-        boolean pluginMissing = fmpPlugin == null;
-        if (updateVersion || pluginMissing) {
+        boolean insertedPlugin = false;
+        if (fmpPlugin == null) {
+            fmpPlugin = findOrAddPlugin(doc, PLUGIN_GROUPID, PLUGIN_ARTIFACTID, versionExpression);
+            updated = true;
+            insertedPlugin = true;
+        }
+        if (updateVersion || insertedPlugin) {
             if (useVersionProperty) {
                 Element documentElement = doc.getDocumentElement();
                 Element properties = firstChild(documentElement, "properties");
@@ -132,11 +137,7 @@ public class SetupMojo extends AbstractFabric8Mojo {
             }
         }
 
-        if (pluginMissing) {
-            fmpPlugin = findOrAddPlugin(doc, PLUGIN_GROUPID, PLUGIN_ARTIFACTID, versionExpression);
-            updated = true;
-        }
-        if (updateVersion || pluginMissing) {
+        if (updateVersion || insertedPlugin) {
             String version = DomHelper.firstChildTextContent(fmpPlugin, "version");
             if (version == null || !version.equals(versionExpression)) {
                 Element versionElement = DomHelper.firstChild(fmpPlugin, "version");
@@ -155,7 +156,7 @@ public class SetupMojo extends AbstractFabric8Mojo {
                 updated = true;
             }
         }
-        if (pluginMissing) {
+        if (insertedPlugin) {
             Element executions = firstChild(fmpPlugin, "executions");
             if (executions == null) {
                 executions = addChildAfter(appendAfterLastElement(fmpPlugin, doc.createTextNode("\n        ")), "executions");
