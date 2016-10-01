@@ -23,7 +23,6 @@ import io.fabric8.kubernetes.api.builds.Builds;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
-import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
@@ -61,11 +60,11 @@ import io.fabric8.openshift.api.model.BuildStrategy;
 import io.fabric8.openshift.api.model.BuildStrategyBuilder;
 import io.fabric8.openshift.api.model.ImageStream;
 import io.fabric8.openshift.api.model.ImageStreamBuilder;
-import io.fabric8.openshift.api.model.ImageStreamSpec;
 import io.fabric8.openshift.api.model.ImageStreamStatus;
+import io.fabric8.openshift.api.model.ImageStreamTag;
+import io.fabric8.openshift.api.model.ImageStreamTagBuilder;
 import io.fabric8.openshift.api.model.NamedTagEventList;
 import io.fabric8.openshift.api.model.TagEvent;
-import io.fabric8.openshift.api.model.TagReference;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.fabric8.utils.Files;
 import io.fabric8.utils.Strings;
@@ -88,6 +87,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.fabric8.kubernetes.api.KubernetesHelper.getName;
+import static io.fabric8.maven.core.util.KubernetesResourceUtil.findResourceByName;
 import static io.fabric8.maven.core.util.KubernetesResourceUtil.watchLogInThread;
 import static io.fabric8.maven.plugin.AbstractDeployMojo.DEFAULT_OPENSHIFT_MANIFEST;
 import static io.fabric8.maven.plugin.AbstractDeployMojo.loadResources;
@@ -388,7 +388,6 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
             Controller controller = new Controller(client);
 
             Set<HasMetadata> entities = loadResources(client, controller, namespace, manifest, project, log);
-            boolean updated = false;
             ImageStream is = KubernetesResourceUtil.findResourceByName(entities, ImageStream.class, imageStreamName);
             if (is == null) {
                 is = new ImageStreamBuilder().
@@ -396,17 +395,18 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
                                         withNewSpec().addNewTag().withName(label).withNewFrom().withKind("ImageStreamImage").endFrom().endTag().endSpec().
                                         build();
                 entities.add(is);
-                updated = true;
             }
-            if (generateImageStreamTag(client, imageConfig, is, imageStreamName)) {
-                updated = true;
+            ImageStreamTag tag = generateImageStreamTag(client, imageConfig, is, imageStreamName);
+            ImageStreamTag oldTag = findResourceByName(entities, ImageStreamTag.class, getName(tag));
+            if (oldTag != null) {
+                entities.remove(oldTag);
             }
-            if (updated) {
-                // lets append the new ImageStream entities
-                KubernetesList entity = new KubernetesListBuilder().withItems(new ArrayList<>(entities)).build();
-                File resourceFileBase = new File(this.targetDir, ResourceClassifier.OPENSHIFT.getValue());
-                AbstractResourceMojo.writeResourcesIndividualAndComposite(entity, resourceFileBase, ResourceFileType.yaml, log);
-            }
+            entities.add(tag);
+
+            // lets append the new ImageStream entities
+            KubernetesList entity = new KubernetesListBuilder().withItems(new ArrayList<>(entities)).build();
+            File resourceFileBase = new File(this.targetDir, ResourceClassifier.OPENSHIFT.getValue());
+            AbstractResourceMojo.writeResourcesIndividualAndComposite(entity, resourceFileBase, ResourceFileType.yaml, log);
         } catch (KubernetesClientException e) {
             KubernetesResourceUtil.handleKubernetesClientException(e, this.log);
         } catch (MojoExecutionException e) {
@@ -417,7 +417,7 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
 
     }
 
-    private boolean generateImageStreamTag(OpenShiftClient client, ImageConfiguration imageConfig, ImageStream is, String imageStreamName) throws MojoExecutionException {
+    private ImageStreamTag generateImageStreamTag(OpenShiftClient client, ImageConfiguration imageConfig, ImageStream is, String imageStreamName) throws MojoExecutionException {
         String namespace = client.getNamespace();
         String imageName = imageConfig.getName();
         String label = getImageLabel(imageName);
@@ -427,52 +427,14 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
         }
         String tagSha = findTagSha(currentImageStream);
         String name = imageStreamName + "@" + tagSha;
-        String kind = "ImageStreamImage";
 
-        ImageStreamSpec spec = is.getSpec();
-        if (spec != null) {
-            spec = new ImageStreamSpec();
-            is.setSpec(spec);
-        }
-        List<TagReference> tags = spec.getTags();
-        if (tags == null) {
-            tags = new ArrayList<>();
-            spec.setTags(tags);
-        }
-        TagReference tag = null;
-        if (tags.isEmpty()) {
-            tag = new TagReference();
-            tags.add(tag);
-        } else {
-            tag = tags.get(tags.size() - 1);
-        }
-        ObjectReference from = tag.getFrom();
-        if (from == null) {
-            from = new ObjectReference();
-            tag.setFrom(from);
-        }
-
-        boolean answer = false;
-        if (!Objects.equals(label, tag.getName())) {
-            tag.setName(label);
-            answer = true;
-        }
-        if (!Objects.equals(kind, from.getKind())) {
-            from.setKind(kind);
-            answer = true;
-        }
-        if (!Objects.equals(namespace, from.getNamespace())) {
-            from.setNamespace(namespace);
-            answer = true;
-        }
-        if (!Objects.equals(name, from.getName())) {
-            from.setName(name);
-            answer = true;
-        }
-        if (answer) {
-            log.info("Updated ImageStream " + imageStreamName + " to namespace: " + namespace + " name: " + name);
-        }
-        return answer;
+        TagEvent tagEvent = findTagEvent(currentImageStream);
+        return new ImageStreamTagBuilder().
+                withNewMetadata().withName(imageName).endMetadata().
+                withNewTag().withName(label).withNewFrom().withKind("ImageStreamImage").withName(name).withNamespace(namespace).endFrom().endTag().
+                // TODO should we also include the image as well?
+                //withNewImage().withDockerImageReference(tagEvent.getDockerImageReference()).endImage().
+                build();
     }
 
     private static String getImageLabel(String imageName) throws MojoExecutionException {
@@ -484,6 +446,29 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
         }
     }
 
+
+    private TagEvent findTagEvent(ImageStream imageStream) throws MojoExecutionException {
+        ImageStreamStatus status = imageStream.getStatus();
+        if (status != null) {
+            List<NamedTagEventList> tags = status.getTags();
+            if (tags != null && !tags.isEmpty()) {
+                // latest tag is the first
+                for (NamedTagEventList list : tags) {
+                    List<TagEvent> items = list.getItems();
+                    if (items != null) {
+                        // latest item is the first
+                        for (TagEvent item : items) {
+                            String image = item.getImage();
+                            if (Strings.isNotBlank(image)) {
+                                return item;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        throw new MojoExecutionException("Could not find a TagEvent in the ImageStream " + KubernetesHelper.getName(imageStream));
+    }
 
     private String findTagSha(ImageStream imageStream) throws MojoExecutionException {
         ImageStreamStatus status = imageStream.getStatus();
