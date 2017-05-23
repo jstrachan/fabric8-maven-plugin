@@ -17,6 +17,9 @@ package io.fabric8.maven.enricher.app;
 
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.LabelSelector;
+import io.fabric8.kubernetes.api.model.LabelSelectorBuilder;
+import io.fabric8.kubernetes.api.model.LabelSelectorRequirement;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
@@ -29,6 +32,7 @@ import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder;
 import io.fabric8.maven.enricher.app.model.App;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +40,14 @@ import java.util.Set;
 /**
  */
 public class AppGenerator {
+
+    private static boolean isNullOrEmpty(Collection<?> list) {
+        return list == null || list.isEmpty();
+    }
+
+    private static boolean isNullOrEmpty(Map<String, String> map) {
+        return map == null || map.isEmpty();
+    }
 
     /**
      * Returns the Kubernetes resources for the given App
@@ -61,8 +73,14 @@ public class AppGenerator {
             }
         }
 
+        LabelSelector appSelector = app.getSelector();
+        ObjectMeta deploymentMetadata = createMetadata(app);
+        if (isSelectorEmpty(appSelector)) {
+            appSelector = createAppSelector(deploymentMetadata);
+            app.setSelector(appSelector);
+        }
         answer.add(new DeploymentBuilder().
-                withMetadata(createMetadata(app)).
+                withMetadata(deploymentMetadata).
                 withNewSpec().
                 withMinReadySeconds(app.getMinReadySeconds()).
                 withPaused(app.isPaused()).
@@ -70,7 +88,7 @@ public class AppGenerator {
                 withReplicas(app.getReplicas()).
                 withRevisionHistoryLimit(app.getRevisionHistoryLimit()).
                 withRollbackTo(app.getRollbackTo()).
-                withSelector(app.getSelector()).
+                withSelector(appSelector).
                 withNewTemplate().
                 withMetadata(createMetadata(app)).
                 withSpec(app).
@@ -80,6 +98,11 @@ public class AppGenerator {
 
         ServiceSpec service = app.getService();
         if (service != null) {
+            Map<String, String> selector = service.getSelector();
+            if (selector == null || selector.isEmpty()) {
+                selector = deploymentMetadata.getLabels();
+                service.setSelector(selector);
+            }
             answer.add(new ServiceBuilder().
                     withMetadata(createMetadata(app)).withSpec(service).
                     build());
@@ -93,6 +116,18 @@ public class AppGenerator {
 
         // TODO add volumes and configmaps
         return answer;
+    }
+
+    private LabelSelector createAppSelector(ObjectMeta metadata) {
+        return new LabelSelectorBuilder().withMatchLabels(metadata.getLabels()).build();
+    }
+
+    private boolean isSelectorEmpty(LabelSelector appSelector) {
+        if (appSelector == null) {
+            return true;
+        }
+        List<LabelSelectorRequirement> matchExpressions = appSelector.getMatchExpressions();
+        return isNullOrEmpty(matchExpressions) && isNullOrEmpty(appSelector.getMatchLabels());
     }
 
     private void lazyCreateVolume(List<Volume> volumes, String pvcName, PersistentVolumeClaimSpec persistentVolumeClaimSpec) {
