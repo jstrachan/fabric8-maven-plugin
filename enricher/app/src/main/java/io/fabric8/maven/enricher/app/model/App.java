@@ -18,13 +18,10 @@ package io.fabric8.maven.enricher.app.model;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.LabelSelector;
-import io.fabric8.kubernetes.api.model.LocalObjectReference;
-import io.fabric8.kubernetes.api.model.PodSecurityContext;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.PodSpec;
 import io.fabric8.kubernetes.api.model.ServiceSpec;
-import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentStrategy;
 import io.fabric8.kubernetes.api.model.extensions.RollbackConfig;
 import io.sundr.builder.annotations.Buildable;
@@ -102,6 +99,12 @@ public class App extends PodSpec {
     private Map<String, String> configData;
 
 
+    // optional PVC data
+    @JsonProperty("persistentVolumes")
+    @Valid
+    private Map<String, PersistentVolumeClaimSpec> persistentVolumes;
+
+
     public App() {
     }
 
@@ -169,10 +172,6 @@ public class App extends PodSpec {
         this.minReadySeconds = minReadySeconds;
     }
 
-    public void setPaused(Boolean paused) {
-        this.paused = paused;
-    }
-
     public Integer getProgressDeadlineSeconds() {
         return progressDeadlineSeconds;
     }
@@ -236,16 +235,28 @@ public class App extends PodSpec {
     public void setConfigData(Map<String, String> configData) {
         this.configData = configData;
     }
-    
-// TODO workaround code generation issue
+
+    public Map<String, PersistentVolumeClaimSpec> getPersistentVolumes() {
+        return persistentVolumes;
+    }
+
+    public void setPersistentVolumes(Map<String, PersistentVolumeClaimSpec> persistentVolumes) {
+        this.persistentVolumes = persistentVolumes;
+    }
+
+    public boolean isPaused() {
+        return paused != null && paused.booleanValue();
+    }
+
+    // TODO workaround code generation issue
 /*
     public Boolean getPaused() {
         return paused;
     }
 */
 
-    public boolean isPaused() {
-        return paused != null && paused.booleanValue();
+    public void setPaused(Boolean paused) {
+        this.paused = paused;
     }
 
 

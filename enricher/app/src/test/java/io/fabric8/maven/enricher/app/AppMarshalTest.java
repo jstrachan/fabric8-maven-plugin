@@ -19,6 +19,8 @@ import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpecBuilder;
+import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.ServiceSpecBuilder;
 import io.fabric8.maven.enricher.app.model.App;
 import io.fabric8.maven.enricher.app.model.AppBuilder;
@@ -37,6 +39,14 @@ public class AppMarshalTest {
                 addToLabels("app", "cheese").
                 addToAnnotations("com.acme", "foo").
                 addToConfigData("application.properties", "foo.bar = abcd").
+                addToPersistentVolumes("log-data", new PersistentVolumeClaimSpecBuilder().
+                        withAccessModes("ReadWriteOnce").
+                        withNewResources().addToLimits("storage", new Quantity("1Gi")).endResources().
+                        build()).
+                addToPersistentVolumes("app-data", new PersistentVolumeClaimSpecBuilder().
+                        withAccessModes("ReadWriteMany").
+                        withNewResources().addToLimits("storage", new Quantity("5Gi")).endResources().
+                        build()).
                 withService(new ServiceSpecBuilder().addNewPort().withPort(80).withNewTargetPort().withIntVal(8080).endTargetPort().endPort().build()).
                 build();
 
@@ -44,6 +54,8 @@ public class AppMarshalTest {
         app.setContainers(Arrays.asList(new ContainerBuilder().
                 withImage("foo/bar:123").
                 addNewEnv().withName("MY_ENV").withValue("CHEESE").endEnv().
+                addNewVolumeMount().withName("log-data").withMountPath("/app/logs").endVolumeMount().
+                addNewVolumeMount().withName("app-data").withMountPath("/app/appstuff").endVolumeMount().
                 build()));
 
 
