@@ -91,8 +91,16 @@ public class App extends PodSpec {
     @Valid
     private DeploymentStrategy strategy;
 
+
+    // optional Service spec
     @JsonProperty("service")
     private ServiceSpec service;
+
+    // optional ConfigMap data
+    @JsonProperty("configData")
+    @Valid
+    private Map<String, String> configData;
+
 
     public App() {
     }
@@ -221,7 +229,15 @@ public class App extends PodSpec {
         this.service = service;
     }
 
-    // TODO workaround code generation issue
+    public Map<String, String> getConfigData() {
+        return configData;
+    }
+
+    public void setConfigData(Map<String, String> configData) {
+        this.configData = configData;
+    }
+    
+// TODO workaround code generation issue
 /*
     public Boolean getPaused() {
         return paused;
@@ -233,257 +249,4 @@ public class App extends PodSpec {
     }
 
 
-    // TODO lets expose base properties as a hack to get the builder code generator to work
-
-    @Override
-    public Long getActiveDeadlineSeconds() {
-        // TODO
-        return super.getActiveDeadlineSeconds();
-
-    }
-
-    @Override
-    public void setActiveDeadlineSeconds(Long activeDeadlineSeconds) {
-        // TODO
-        super.setActiveDeadlineSeconds(activeDeadlineSeconds);
-
-    }
-
-    @Override
-    public List<Container> getContainers() {
-        // TODO
-        return super.getContainers();
-
-    }
-
-    @Override
-    public void setContainers(List<Container> containers) {
-        // TODO
-        super.setContainers(containers);
-
-    }
-
-    @Override
-    public String getDnsPolicy() {
-        // TODO
-        return super.getDnsPolicy();
-
-    }
-
-    @Override
-    public void setDnsPolicy(String dnsPolicy) {
-        // TODO
-        super.setDnsPolicy(dnsPolicy);
-
-    }
-
-    @Override
-    public Boolean getHostIPC() {
-        // TODO
-        return super.getHostIPC();
-
-    }
-
-    @Override
-    public void setHostIPC(Boolean hostIPC) {
-        // TODO
-        super.setHostIPC(hostIPC);
-
-    }
-
-    @Override
-    public Boolean getHostNetwork() {
-        // TODO
-        return super.getHostNetwork();
-
-    }
-
-    @Override
-    public void setHostNetwork(Boolean hostNetwork) {
-        // TODO
-        super.setHostNetwork(hostNetwork);
-
-    }
-
-    @Override
-    public Boolean getHostPID() {
-        // TODO
-        return super.getHostPID();
-
-    }
-
-    @Override
-    public void setHostPID(Boolean hostPID) {
-        // TODO
-        super.setHostPID(hostPID);
-
-    }
-
-    @Override
-    public String getHostname() {
-        // TODO
-        return super.getHostname();
-
-    }
-
-    @Override
-    public void setHostname(String hostname) {
-        // TODO
-        super.setHostname(hostname);
-
-    }
-
-    @Override
-    public List<LocalObjectReference> getImagePullSecrets() {
-        // TODO
-        return super.getImagePullSecrets();
-
-    }
-
-    @Override
-    public void setImagePullSecrets(List<LocalObjectReference> imagePullSecrets) {
-        // TODO
-        super.setImagePullSecrets(imagePullSecrets);
-
-    }
-
-    @Override
-    public String getNodeName() {
-        // TODO
-        return super.getNodeName();
-
-    }
-
-    @Override
-    public void setNodeName(String nodeName) {
-        // TODO
-        super.setNodeName(nodeName);
-
-    }
-
-    @Override
-    public Map<String, String> getNodeSelector() {
-        // TODO
-        return super.getNodeSelector();
-
-    }
-
-    @Override
-    public void setNodeSelector(Map<String, String> nodeSelector) {
-        // TODO
-        super.setNodeSelector(nodeSelector);
-
-    }
-
-    @Override
-    public String getRestartPolicy() {
-        // TODO
-        return super.getRestartPolicy();
-
-    }
-
-    @Override
-    public void setRestartPolicy(String restartPolicy) {
-        // TODO
-        super.setRestartPolicy(restartPolicy);
-
-    }
-
-    @Override
-    public PodSecurityContext getSecurityContext() {
-        // TODO
-        return super.getSecurityContext();
-
-    }
-
-    @Override
-    public void setSecurityContext(PodSecurityContext securityContext) {
-        // TODO
-        super.setSecurityContext(securityContext);
-
-    }
-
-    @Override
-    public String getServiceAccount() {
-        // TODO
-        return super.getServiceAccount();
-
-    }
-
-    @Override
-    public void setServiceAccount(String serviceAccount) {
-        // TODO
-        super.setServiceAccount(serviceAccount);
-
-    }
-
-    @Override
-    public String getServiceAccountName() {
-        // TODO
-        return super.getServiceAccountName();
-
-    }
-
-    @Override
-    public void setServiceAccountName(String serviceAccountName) {
-        // TODO
-        super.setServiceAccountName(serviceAccountName);
-
-    }
-
-    @Override
-    public String getSubdomain() {
-        // TODO
-        return super.getSubdomain();
-
-    }
-
-    @Override
-    public void setSubdomain(String subdomain) {
-        // TODO
-        super.setSubdomain(subdomain);
-
-    }
-
-    @Override
-    public Long getTerminationGracePeriodSeconds() {
-        // TODO
-        return super.getTerminationGracePeriodSeconds();
-
-    }
-
-    @Override
-    public void setTerminationGracePeriodSeconds(Long terminationGracePeriodSeconds) {
-        // TODO
-        super.setTerminationGracePeriodSeconds(terminationGracePeriodSeconds);
-
-    }
-
-    @Override
-    public List<Volume> getVolumes() {
-        // TODO
-        return super.getVolumes();
-
-    }
-
-    @Override
-    public void setVolumes(List<Volume> volumes) {
-        // TODO
-        super.setVolumes(volumes);
-
-    }
-
-    @Override
-    public Map<String, Object> getAdditionalProperties() {
-        // TODO
-        return super.getAdditionalProperties();
-
-    }
-
-    @Override
-    public void setAdditionalProperty(String name, Object value) {
-        // TODO
-        super.setAdditionalProperty(name, value);
-
-    }
 }

@@ -15,6 +15,7 @@
  */
 package io.fabric8.maven.enricher.app;
 
+import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesList;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
@@ -26,6 +27,7 @@ import io.fabric8.maven.enricher.app.model.App;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  */
@@ -58,6 +60,12 @@ public class AppGenerator {
         if (service != null) {
             answer.add(new ServiceBuilder().
                     withMetadata(createMetadata(app)).withSpec(service).
+                    build());
+        }
+        Map<String, String> configData = app.getConfigData();
+        if (configData != null && !configData.isEmpty()) {
+            answer.add(new ConfigMapBuilder().
+                    withMetadata(createMetadata(app)).withData(configData).
                     build());
         }
 

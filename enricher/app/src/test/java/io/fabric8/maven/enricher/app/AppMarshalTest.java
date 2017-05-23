@@ -36,6 +36,7 @@ public class AppMarshalTest {
                 withReplicas(1).
                 addToLabels("app", "cheese").
                 addToAnnotations("com.acme", "foo").
+                addToConfigData("application.properties", "foo.bar = abcd").
                 withService(new ServiceSpecBuilder().addNewPort().withPort(80).withNewTargetPort().withIntVal(8080).endTargetPort().endPort().build()).
                 build();
 
